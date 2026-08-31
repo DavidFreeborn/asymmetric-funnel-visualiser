@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this visualiser in teaching, research, or published work, please cite the software."
+title: "Particles with an asymmetric funnel"
+type: software
+authors:
+  - family-names: "Freeborn"
+    given-names: "David"
+year: 2026
+license: MIT

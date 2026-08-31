@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Interactive simulation of reversible particles moving between two chambers through an asymmetric funnel.">
+<title>Particles with an asymmetric funnel</title>
+<style>
+:root{
+  --analysis-width:370px;
+  --paper:#f5f3ee;
+  --ink:#20292d;
+  --muted:#66757b;
+  --rule:#cbc9c2;
+  --rule-dark:#8c989d;
+  --field:#081116;
+  --wall:#c8d2d6;
+  --a:#367f7c;
+  --b:#a66e2d;
+  --focus:#236e6a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink)}
+body{font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:1.45}
+button,input,select{font:inherit}
+button{color:inherit}
+.app{width:min(1540px,calc(100vw - 32px));margin:0 auto;padding:18px 0 28px}
+header{padding-bottom:9px}
+h1{margin:0;font-size:clamp(29px,2.2vw,40px);line-height:1.08;font-weight:500;letter-spacing:-.025em}
+.control-band{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:9px 0}
+.actions{display:flex;gap:7px;align-items:center}
+.toolbtn,.experiment,.demo-step,.analysis-tab,.panel-toggle{appearance:none;border-radius:0;background:transparent;cursor:pointer}
+.toolbtn{border:1px solid var(--rule-dark);padding:6px 11px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}
+.toolbtn:hover{background:#ebe8e1}
+.toolbtn.primary{border-color:var(--focus);color:#174e4b}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:16px;align-items:end}
+.control[hidden]{display:none}
+.control label,.control-title{display:flex;justify-content:space-between;gap:10px;margin-bottom:3px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#596970;font-size:13px}
+.control output{color:var(--ink);font-variant-numeric:tabular-nums}
+input[type="range"]{width:100%;margin:0;accent-color:#5d9e9b}
+select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#faf9f6;color:var(--ink);padding:5px 7px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:13px}
+.split-control{min-width:230px}
+.split-row{display:grid;grid-template-columns:auto minmax(90px,1fr) auto;gap:8px;align-items:center}
+.split-row output{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px;color:#53636a;min-width:42px}
+.split-row output:last-child{text-align:right}
+.check-control{display:flex;align-items:end;min-height:39px}
+.checkline{display:inline-flex!important;justify-content:flex-start!important;align-items:center;gap:7px!important;margin:0!important;color:#53636a!important;cursor:pointer}
+.checkline input{margin:0}
+.trajectory-toggle{display:inline-flex;align-items:center;gap:6px;margin-left:3px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:13px;color:#596970;white-space:nowrap;cursor:pointer}
+.trajectory-toggle input{margin:0;accent-color:#5d9e9b}
+
+.experiments{display:flex;border-bottom:1px solid var(--rule);overflow-x:auto;scrollbar-width:thin}
+.experiment,.demo-step{border:0;border-bottom:2px solid transparent;padding:10px 13px 9px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;color:#5c6c73;white-space:nowrap;text-align:left}
+.experiment:hover,.demo-step:hover{background:#ece9e2;color:var(--ink)}
+.experiment.active,.demo-step.active{color:var(--ink);border-bottom-color:var(--focus)}
+.demo-sequence{display:flex;align-items:stretch;border-bottom:1px solid var(--rule);background:#f1efe9}
+.demo-sequence[hidden]{display:none}
+.demo-label{padding:9px 10px 8px 1px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px;color:#78868c;white-space:nowrap}
+.demo-step{font-size:13px;padding:8px 11px 7px}
+.mode-caption{padding:7px 1px 8px;color:var(--muted);font-size:14px;min-height:0}
+.mode-caption:empty{display:none}
+
+.instrument{display:grid;grid-template-columns:minmax(0,1fr) var(--analysis-width);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.instrument.analysis-hidden{grid-template-columns:minmax(0,1fr);width:calc(100% - var(--analysis-width))}
+.sim-wrap{position:relative;min-width:0;background:var(--paper);display:flex;justify-content:center;align-items:flex-start;overflow:hidden}
+.sim-stage{position:relative;width:min(100%,1080px);aspect-ratio:1.7;background:var(--field)}
+#simCanvas{display:block;width:100%;height:100%}
+.panel-toggle{position:absolute;z-index:5;top:8px;right:8px;width:30px;height:30px;border:1px solid #7e8e95;color:#dce5e8;background:#0d171c;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:17px;line-height:28px;padding:0}
+.panel-toggle:hover{background:#142127}
+.panel-toggle.open{display:none}
+.instrument.analysis-hidden .panel-toggle.open{display:block}
+
+.analysis{min-width:0;border-left:1px solid var(--rule);background:var(--paper);display:grid;grid-template-rows:auto minmax(0,1fr)}
+.analysis[hidden]{display:none}
+.analysis-head{display:flex;border-bottom:1px solid var(--rule)}
+.analysis-tabs{display:flex;flex:1;min-width:0;overflow-x:auto}
+.analysis-tab{border:0;border-bottom:2px solid transparent;padding:9px 10px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;color:#65747a;white-space:nowrap}
+.analysis-tab:hover{background:#ece9e2}
+.analysis-tab.active{border-bottom-color:var(--focus);color:var(--ink)}
+.collapse{position:static;width:34px;height:auto;border-width:0 0 0 1px;background:transparent;color:#65747a}
+.analysis-body{padding:14px 15px 16px;overflow:auto;min-height:0}
+.analysis-pane[hidden]{display:none}
+.section-title{font-size:18px;font-weight:500;margin:0 0 10px}
+.metric-list{margin:0;padding:0}
+.metric-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:6px 0;border-top:1px solid #d8d6cf;align-items:baseline}
+.metric-row:first-child{border-top:0}
+.metric-row dt{font-size:14px;color:#617078}
+.metric-row dd{margin:0;text-align:right;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;font-variant-numeric:tabular-nums}
+.chart-block{margin-top:15px;padding-top:11px;border-top:1px solid var(--rule)}
+.chart-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:5px}
+.chart-head strong{font-size:15px;font-weight:500}
+.chart-head span{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px;color:#78868c}
+.analysis canvas{display:block;width:100%;background:#faf9f6;border:1px solid #d6d4cd}
+#imbalanceCanvas{height:174px}
+.crossing-intro,.crossing-summary,.theory p,.assumptions{font-size:14px;color:#617078}
+.crossing-intro{margin:0 0 10px;color:var(--ink)}
+.crossing-grid{display:grid;grid-template-columns:1fr;gap:13px}
+.crossing-figure{margin:0}
+.crossing-figure figcaption{margin:0 0 5px;font-size:14px;font-weight:500}
+.crossing-caption{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.crossing-key{display:flex;gap:10px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:11px;font-weight:400;color:#68767c}
+.crossing-key span{display:inline-flex;align-items:center;gap:4px}
+.crossing-key i{display:inline-block;width:10px;height:2px}
+.crossing-figure canvas{height:260px}
+.crossing-summary{margin:10px 0 0;padding-top:9px;border-top:1px solid var(--rule);color:#53636a}
+.crossing-summary strong{font-weight:500;color:var(--ink)}
+.theory p{margin:0 0 10px}
+.theory p:first-of-type{color:var(--ink)}
+.assumptions{margin:13px 0 0;padding-top:10px;border-top:1px solid var(--rule)}
+
+.toolbtn:focus-visible,.experiment:focus-visible,.demo-step:focus-visible,.analysis-tab:focus-visible,.panel-toggle:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+@media(max-width:1080px){
+  .control-band{grid-template-columns:1fr}
+  .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .instrument,.instrument.analysis-hidden{grid-template-columns:1fr;width:100%}
+  .analysis{border-left:0;border-top:1px solid var(--rule)}
+  .instrument.analysis-hidden .panel-toggle.open{display:block}
+  .crossing-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+  .app{width:calc(100vw - 16px);padding-top:12px}
+  .actions{flex-wrap:wrap}
+  .controls{grid-template-columns:1fr 1fr}
+  .experiments{display:grid;grid-template-columns:1fr 1fr;overflow:visible}
+  .experiment{white-space:normal;min-height:42px;padding:8px;font-size:13px}
+  .demo-sequence{display:grid;grid-template-columns:1fr 1fr 1fr 1fr}
+  .demo-label{grid-column:1/-1;padding:7px 8px 2px}
+  .demo-step{white-space:normal;min-height:42px;padding:7px;font-size:12px}
+  .mode-caption{font-size:13px}
+  .crossing-grid{grid-template-columns:1fr}
+}
+@media(max-width:430px){
+  .control-band{gap:10px}
+  .controls{grid-template-columns:1fr}
+  .split-control{min-width:0}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>Particles with an asymmetric funnel</h1>
+</header>
+
+<section class="control-band" aria-label="Simulation controls">
+  <div class="actions">
+    <button class="toolbtn primary" id="playBtn">Pause</button>
+    <button class="toolbtn" id="stepBtn">Step</button>
+    <button class="toolbtn" id="resetBtn">Reset</button>
+    <button class="toolbtn" id="reverseVelocityBtn">Reverse velocities</button>
+    <label class="trajectory-toggle" for="trajectoryCheck"><input id="trajectoryCheck" type="checkbox"> Trajectories</label>
+  </div>
+  <div class="controls">
+    <div class="control">
+      <label for="nSlider"><span>Particle number</span><output id="nOut">260</output></label>
+      <input id="nSlider" type="range" min="60" max="480" step="20" value="260">
+    </div>
+    <div class="control">
+      <label for="speedSlider"><span>Simulation speed</span><output id="speedOut">1.0×</output></label>
+      <input id="speedSlider" type="range" min="0.4" max="8" step="0.1" value="1">
+    </div>
+    <div class="control" id="startStateControl">
+      <label for="startStateSelect"><span>Starting state</span></label>
+      <select id="startStateSelect" aria-label="Starting state">
+        <option value="random">Random gas</option>
+        <option value="beamA">Collimated beam from A</option>
+        <option value="beamB">Collimated beam from B</option>
+      </select>
+    </div>
+    <div class="control split-control" id="shareControl">
+      <span class="control-title">Starting particles</span>
+      <div class="split-row">
+        <output id="shareAOut">A 50%</output>
+        <input id="shareSlider" aria-label="Share of particles starting in chamber A" type="range" min="0" max="100" step="10" value="50">
+        <output id="shareBOut">50% B</output>
+      </div>
+    </div>
+    <div class="control">
+      <label for="gapSlider"><span>Opening width</span><output id="gapOut">8%</output></label>
+      <input id="gapSlider" type="range" min="6" max="16" step="2" value="8">
+    </div>
+  </div>
+</section>
+
+<nav class="experiments" aria-label="Experiments">
+  <button class="experiment active" data-group="simulation">Starting states</button>
+  <button class="experiment" data-group="demo">Prepared-beam demonstration</button>
+</nav>
+<div class="demo-sequence" id="beamSequence" hidden aria-label="Prepared beam demonstration">
+  <span class="demo-label">Prepared beam:</span>
+  <button class="demo-step active" data-mode="forward">1. A → B beam</button>
+  <button class="demo-step" data-mode="mirror">2. Same beam B → A</button>
+  <button class="demo-step" data-mode="reverseA">3. Reverse A → B final state</button>
+  <button class="demo-step" data-mode="reverseB">4. Reverse B → A final state</button>
+</div>
+<div class="mode-caption" id="modeCaption"></div>
+
+<main class="instrument" id="instrument">
+  <section class="sim-wrap" aria-label="Particle simulation">
+    <div class="sim-stage" id="simStage">
+      <canvas id="simCanvas" role="img" aria-label="Particle simulation"></canvas>
+      <button class="panel-toggle open" id="showAnalysisBtn" aria-label="Show analysis" title="Show analysis">←</button>
+    </div>
+  </section>
+
+  <aside class="analysis" id="analysis" aria-label="Analysis panel">
+    <div class="analysis-head">
+      <div class="analysis-tabs" role="tablist" aria-label="Analysis views">
+        <button class="analysis-tab active" data-pane="measurements" role="tab" aria-selected="true" aria-controls="measurementsPane">Measurements</button>
+        <button class="analysis-tab" data-pane="crossings" role="tab" aria-selected="false" aria-controls="crossingsPane">Position &amp; direction</button>
+        <button class="analysis-tab" data-pane="theory" role="tab" aria-selected="false" aria-controls="theoryPane">Theory</button>
+      </div>
+      <button class="panel-toggle collapse" id="hideAnalysisBtn" aria-label="Hide analysis" title="Hide analysis">→</button>
+    </div>
+    <div class="analysis-body">
+      <section class="analysis-pane" id="measurementsPane">
+        <h2 class="section-title">Measurements</h2>
+        <dl class="metric-list" id="metricList"></dl>
+        <div class="chart-block" id="imbalanceBlock">
+          <div class="chart-head"><strong>Cumulative A→B vs B→A imbalance</strong><span id="imbalanceValue">0.0%</span></div>
+          <canvas id="imbalanceCanvas" role="img" aria-label="Cumulative A to B versus B to A passage imbalance over time"></canvas>
+        </div>
+      </section>
+
+      <section class="analysis-pane" id="crossingsPane" hidden>
+        <h2 class="section-title">Position and direction</h2>
+        <p class="crossing-intro" id="crossingIntro">The funnel trades a narrower range of positions for a wider range of directions.</p>
+        <figure class="crossing-figure">
+          <figcaption class="crossing-caption"><span id="crossingTitle">Before and after the funnel</span><span class="crossing-key" id="crossingKey"></span></figcaption>
+          <canvas id="phasePlot" role="img" aria-label="Particle states plotted by vertical position and vertical direction"></canvas>
+        </figure>
+        <p class="crossing-summary" id="crossingSummary"></p>
+      </section>
+
+      <section class="analysis-pane theory" id="theoryPane" hidden>
+        <h2 class="section-title">Reversibility and equilibrium</h2>
+        <p>Specular billiard dynamics is time-reversible. Reverse every velocity and the same microstate retraces its path.</p>
+        <p>Liouville's theorem says the phase-space distribution is carried without compression. A collimated ensemble may spread and look more uniform in position, but it does not literally become the equilibrium distribution in fine-grained phase space.</p>
+        <p>Under the ergodic assumption, long-time averages sample the equilibrium measure. Convergence of an instantaneous ensemble toward equilibrium is the stronger property of mixing, which this polygonal example does not assume.</p>
+        <p class="assumptions"><strong>Model:</strong> point particles at fixed speed, static specular walls, no friction or gravity, and no particle-particle collisions.</p>
+      </section>
+    </div>
+  </aside>
+</main>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const simCanvas=$("simCanvas"),ctx=simCanvas.getContext("2d",{alpha:false});
+const phasePlot=$("phasePlot"),pctx=phasePlot.getContext("2d");
+const imbalanceCanvas=$("imbalanceCanvas"),ictx=imbalanceCanvas.getContext("2d");
+
+const C={
+  DT:1/120,
+  SPEED:.46,
+  PARTITION:.50,
+  FUNNEL_X:.405,
+  YC:.50,
+  MOUTH_HALF:.09,
+  SOURCE_X:.18,
+  EPS:1e-12,
+  HIT_TOL:2e-10,
+  MAX_COLLISIONS:24,
+  MAX_PHASE:700,
+  TRAIL_SLICES:10,
+  TRAIL_SLICE_STEPS:12,
+  DEMO_STOP_SECONDS:2.5,
+};
+const COL={field:"#081116",wall:"#c8d2d6",muted:"#85969d",a:"#3d8e8a",b:"#b17631",neutral:"#e7edef",grid:"#ddd9d1",ink:"#29343a"};
+const SEED=20260831;
+const reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let geometry,mode="relax",activeGroup="simulation",startState="random",running=!reduceMotion,playback=1,particleN=260,startAShare=.5,opening=.08;
+let particles=[],simTime=0,physicsStep=0,accumulator=0,lastFrame=performance.now(),stats={},recentWide=[],recentGap=[],history=[],analysisPane="measurements";
+let baseBeamCache={key:null,data:null},forwardRunCache=new Map(),referenceRun=null,savedDemoRuns={A:null,B:null},currentDemoFrames=null;
+let measurementActive=true,canvasInfo=new Map(),lastAnalysisDraw=0,demoStopReached=false,reverseStopReached=false,showTrajectories=false,renderDirty=true;
+let referenceTrailLayer={run:null,mode:null,w:0,h:0,d:0,canvas:document.createElement("canvas")};
+let liveTrail={canvases:[],contexts:[],demoCanvas:document.createElement("canvas"),demoContext:null,w:0,h:0,d:0,sliceIndex:0,sliceSerial:0,segments:new Float32Array(32768),segmentCount:0,sampleCount:0};
+
+const copy={
+  relax:"",
+  forward:"Same collimated start as above, stopped automatically at 2.5 s.",
+  mirror:"The mirrored collimated start, stopped automatically at 2.5 s.",
+  reverseA:"Step 1 at 2.5 s, with every particle velocity reversed.",
+  reverseB:"Step 2 at 2.5 s, with every particle velocity reversed."
+};
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gaussian(rng){let u=0,v=0;while(!u)u=rng();while(!v)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x))}
+function cross(ax,ay,bx,by){return ax*by-ay*bx}
+function pct(x,d=1){return Number.isFinite(x)?(100*x).toFixed(d)+"%":"–"}
+
+function fitCanvas(canvas,context){
+  const r=canvas.getBoundingClientRect();
+  // A hidden canvas has a zero-sized box. Never let that overwrite a valid cached size.
+  if(r.width<2||r.height<2)return false;
+  const d=Math.min(window.devicePixelRatio||1,2),w=Math.round(r.width*d),h=Math.round(r.height*d);
+  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}
+  context.setTransform(d,0,0,d,0,0);canvasInfo.set(canvas,{w:r.width,h:r.height,d});return true;
+}
+function dims(canvas){return canvasInfo.get(canvas)||{w:canvas.clientWidth,h:canvas.clientHeight,d:1}}
+function resizeVisibleCanvases(){
+  fitCanvas(simCanvas,ctx);
+  if(!$("analysis").hidden&&analysisPane==="measurements"&&!$("imbalanceBlock").hidden)fitCanvas(imbalanceCanvas,ictx);
+  if(!$("analysis").hidden&&analysisPane==="crossings")fitCanvas(phasePlot,pctx);
+}
+const ro=new ResizeObserver(()=>{resizeVisibleCanvases();render(true)});ro.observe($("instrument"));ro.observe($("analysis"));
+
+function buildGeometry(){
+  const gapHalf=opening/2,yMU=C.YC-C.MOUTH_HALF,yML=C.YC+C.MOUTH_HALF,yGU=C.YC-gapHalf,yGL=C.YC+gapHalf;
+  const segments=[
+    {a:[0,0],b:[1,0]},{a:[1,0],b:[1,1]},{a:[1,1],b:[0,1]},{a:[0,1],b:[0,0]},
+    {a:[C.PARTITION,0],b:[C.PARTITION,yGU]},{a:[C.PARTITION,yGL],b:[C.PARTITION,1]},
+    {a:[C.FUNNEL_X,yMU],b:[C.PARTITION,yGU]},{a:[C.FUNNEL_X,yML],b:[C.PARTITION,yGL]}
+  ];
+  for(const s of segments){s.minX=Math.min(s.a[0],s.b[0]);s.maxX=Math.max(s.a[0],s.b[0]);s.minY=Math.min(s.a[1],s.b[1]);s.maxY=Math.max(s.a[1],s.b[1])}
+  geometry={gapHalf,yMU,yML,yGU,yGL,segments};baseBeamCache.key=null;forwardRunCache.clear();referenceRun=null;savedDemoRuns={A:null,B:null};currentDemoFrames=null;referenceTrailLayer.run=null;
+}
+function insideBox(x,y,tol=1e-9){return x>=-tol&&x<=1+tol&&y>=-tol&&y<=1+tol}
+function randomInChamber(rng,ch){return[ch==="A"?rng()*C.PARTITION:C.PARTITION+rng()*(1-C.PARTITION),rng()]}
+function makeParticle(id,x,y,vx,vy,kind){return{id,x,y,vx,vy,kind,age:0,outcome:null,singular:false,lastChamber:x<C.PARTITION?"A":"B",source:{x,y,vx,vy},sectionOut:null}}
+function trailColor(){
+  if(mode==="relax")return "rgba(231,237,239,.12)";
+  if(mode==="forward")return "rgba(61,142,138,.18)";
+  if(mode==="mirror")return "rgba(177,118,49,.18)";
+  if(mode==="reverseA")return "rgba(177,118,49,.23)";
+  return "rgba(61,142,138,.23)";
+}
+function sizeTrailCanvas(c,cc,w,h,d){c.width=Math.max(1,Math.round(w*d));c.height=Math.max(1,Math.round(h*d));cc.setTransform(d,0,0,d,0,0);cc.clearRect(0,0,w,h)}
+function ensureTrailRenderer(w,h,d){
+  const tr=liveTrail;if(tr.w===w&&tr.h===h&&tr.d===d&&tr.canvases.length===C.TRAIL_SLICES)return;
+  tr.canvases=[];tr.contexts=[];
+  for(let i=0;i<C.TRAIL_SLICES;i++){const c=document.createElement("canvas"),cc=c.getContext("2d");sizeTrailCanvas(c,cc,w,h,d);tr.canvases.push(c);tr.contexts.push(cc)}
+  tr.demoContext=tr.demoCanvas.getContext("2d");sizeTrailCanvas(tr.demoCanvas,tr.demoContext,w,h,d);
+  tr.w=w;tr.h=h;tr.d=d;tr.sliceIndex=0;tr.sliceSerial=Math.floor(physicsStep/C.TRAIL_SLICE_STEPS);tr.segmentCount=0;tr.sampleCount=0;
+}
+function clearTrailCanvas(c,cc){if(!cc)return;cc.clearRect(0,0,liveTrail.w,liveTrail.h)}
+function resetTrajectoryRenderer(){
+  const tr=liveTrail,dim=dims(simCanvas);if(dim.w&&dim.h)ensureTrailRenderer(dim.w,dim.h,dim.d);
+  tr.segmentCount=0;tr.sampleCount=0;tr.sliceIndex=0;tr.sliceSerial=Math.floor(physicsStep/C.TRAIL_SLICE_STEPS);
+  for(let i=0;i<tr.contexts.length;i++)clearTrailCanvas(tr.canvases[i],tr.contexts[i]);clearTrailCanvas(tr.demoCanvas,tr.demoContext);
+}
+function collectTrailSegment(p,x0,y0,x1,y1){
+  if(!showTrajectories)return;const tr=liveTrail,need=(tr.segmentCount+1)*4;
+  if(need>tr.segments.length){const grown=new Float32Array(tr.segments.length*2);grown.set(tr.segments);tr.segments=grown}
+  const j=tr.segmentCount*4;tr.segments[j]=x0;tr.segments[j+1]=y0;tr.segments[j+2]=x1;tr.segments[j+3]=y1;tr.segmentCount++;
+}
+function rotateTrailSlices(serial){
+  const tr=liveTrail;if(serial<tr.sliceSerial){tr.sliceSerial=serial;return}
+  while(tr.sliceSerial<serial){tr.sliceIndex=(tr.sliceIndex+1)%C.TRAIL_SLICES;clearTrailCanvas(tr.canvases[tr.sliceIndex],tr.contexts[tr.sliceIndex]);tr.sliceSerial++}
+}
+function flushTrailSegments(){
+  const tr=liveTrail;if(!showTrajectories||!tr.segmentCount)return;const dim=dims(simCanvas);if(!dim.w||!dim.h){tr.segmentCount=0;return}ensureTrailRenderer(dim.w,dim.h,dim.d);
+  let cc;if(activeGroup==="demo")cc=tr.demoContext;else{const serial=Math.floor(physicsStep/C.TRAIL_SLICE_STEPS);rotateTrailSlices(serial);cc=tr.contexts[tr.sliceIndex]}
+  cc.strokeStyle=trailColor();cc.lineWidth=.8;cc.beginPath();const a=tr.segments,w=dim.w,h=dim.h;
+  for(let i=0;i<tr.segmentCount;i++){const j=i*4;cc.moveTo(a[j]*w,a[j+1]*h);cc.lineTo(a[j+2]*w,a[j+3]*h)}cc.stroke();tr.segmentCount=0;tr.sampleCount++;
+}
+function drawLiveTrailLayers(w,h,d){
+  const tr=liveTrail;ensureTrailRenderer(w,h,d);if(activeGroup==="demo"){ctx.drawImage(tr.demoCanvas,0,0,w,h);return}
+  for(let k=1;k<=C.TRAIL_SLICES;k++){const i=(tr.sliceIndex+k)%C.TRAIL_SLICES;ctx.drawImage(tr.canvases[i],0,0,w,h)}
+}
+
+function segmentHits(px,py,dx,dy){
+  let bestT=Infinity,hits=[];
+  const ex=px+dx,ey=py+dy,minX=Math.min(px,ex)-C.HIT_TOL,maxX=Math.max(px,ex)+C.HIT_TOL,minY=Math.min(py,ey)-C.HIT_TOL,maxY=Math.max(py,ey)+C.HIT_TOL;
+  for(let i=0;i<geometry.segments.length;i++){
+    const s=geometry.segments[i];if(maxX<s.minX||minX>s.maxX||maxY<s.minY||minY>s.maxY)continue;
+    const ax=s.a[0],ay=s.a[1],sx=s.b[0]-ax,sy=s.b[1]-ay,den=cross(dx,dy,sx,sy);if(Math.abs(den)<1e-15)continue;
+    const qx=ax-px,qy=ay-py,t=cross(qx,qy,sx,sy)/den,u=cross(qx,qy,dx,dy)/den;
+    if(t>C.EPS&&t<=1+C.EPS&&u>=-C.HIT_TOL&&u<=1+C.HIT_TOL){
+      if(t<bestT-C.HIT_TOL){bestT=t;hits=[]}
+      if(Math.abs(t-bestT)<=C.HIT_TOL){const len=Math.hypot(sx,sy);hits.push({t,u:clamp(u,0,1),seg:i,nx:-sy/len,ny:sx/len})}
+    }
+  }
+  return hits;
+}
+function moveParticle(p,dt,onSegment=null){
+  let rem=dt,collisions=0;
+  while(rem>C.EPS){
+    const x0=p.x,y0=p.y,vx=p.vx,vy=p.vy,dx=vx*rem,dy=vy*rem,x1=x0+dx,y1=y0+dy;
+    const safelyLeft=x0<C.FUNNEL_X&&x1<C.FUNNEL_X,safelyRight=x0>C.PARTITION&&x1>C.PARTITION;
+    if(x1>0&&x1<1&&y1>0&&y1<1&&(safelyLeft||safelyRight)){if(onSegment)onSegment(p,x0,y0,x1,y1,vx,vy);p.x=x1;p.y=y1;break}
+    const hits=segmentHits(x0,y0,dx,dy);
+    if(!hits.length){if(onSegment)onSegment(p,x0,y0,x1,y1,vx,vy);p.x=x1;p.y=y1;if(!insideBox(p.x,p.y,2e-8))throw new Error(`Particle left box: ${p.id}`);break}
+    const hit=hits[0],travel=rem*hit.t,s=geometry.segments[hit.seg],hx=s.a[0]+hit.u*(s.b[0]-s.a[0]),hy=s.a[1]+hit.u*(s.b[1]-s.a[1]);
+    if(onSegment)onSegment(p,x0,y0,hx,hy,vx,vy);p.x=hx;p.y=hy;
+    if(hits.length>1||hit.u<1e-9||hit.u>1-1e-9){p.singular=true;p.vx=-vx;p.vy=-vy}
+    else{const dot=vx*hit.nx+vy*hit.ny;p.vx=vx-2*dot*hit.nx;p.vy=vy-2*dot*hit.ny}
+    rem-=travel;if(++collisions>C.MAX_COLLISIONS)throw new Error(`Collision iteration limit: ${p.id}`);
+  }
+  return collisions;
+}
+function crossingFraction(x0,x1,xp){const dx=x1-x0;if(Math.abs(dx)<1e-15)return null;const t=(xp-x0)/dx;return t>C.EPS&&t<1-C.EPS?t:null}
+function phasePoint(y,vx,vy){return{y,s:clamp(vy/C.SPEED,-1,1),dir:Math.sign(vx)}}
+function pushRecent(arr,p){arr.push(p);if(arr.length>C.MAX_PHASE)arr.splice(0,arr.length-C.MAX_PHASE)}
+
+function initRelax(){
+  const rng=mulberry32((SEED^0x3D45B17F)>>>0),nA=Math.round(particleN*startAShare);particles=[];
+  for(let i=0;i<particleN;i++){const ch=i<nA?"A":"B",[x,y]=randomInChamber(rng,ch),a=rng()*Math.PI*2;particles.push(makeParticle(i,x,y,C.SPEED*Math.cos(a),C.SPEED*Math.sin(a),"relax"))}
+  stats={ab:0,ba:0,aNow:nA,bNow:particleN-nA,collisions:0,illegalPartition:0};history=[];
+}
+function baseBeamSamples(n){
+  const key=`${n}|${SEED}`;if(baseBeamCache.key===key)return baseBeamCache.data;
+  const rng=mulberry32((SEED^0xA53C91E7)>>>0),out=[];
+  for(let i=0;i<n;i++){const y=C.YC+(rng()*2-1)*(C.MOUTH_HALF*.8),d=clamp(gaussian(rng)*.008,-.095,.095);out.push({id:i,y,d})}
+  baseBeamCache={key,data:out};return out;
+}
+function beamSamples(n,dir){return baseBeamSamples(n).map(s=>({id:s.id,y:s.y,vx:dir*C.SPEED*Math.cos(s.d),vy:C.SPEED*Math.sin(s.d)}))}
+function initBeam(dir,kind){
+  particles=beamSamples(particleN,dir).map(s=>makeParticle(s.id,dir>0?C.SOURCE_X:1-C.SOURCE_X,s.y,s.vx,s.vy,kind));
+  stats={ab:0,ba:0,aNow:dir>0?particleN:0,bNow:dir>0?0:particleN,classified:0,success:0,fail:0,collisions:0,illegalPartition:0};
+  history=[];measurementActive=true;
+}
+function relaxationSegment(p,x0,y0,x1,y1,vx,vy){
+  let q=crossingFraction(x0,x1,C.FUNNEL_X);if(q!==null){const y=y0+(y1-y0)*q;if(y>geometry.yMU&&y<geometry.yML)pushRecent(recentWide,phasePoint(y,vx,vy))}
+  q=crossingFraction(x0,x1,C.PARTITION);if(q!==null){const y=y0+(y1-y0)*q;if(y>geometry.yGU&&y<geometry.yGL){pushRecent(recentGap,phasePoint(y,vx,vy));if(vx>0&&p.lastChamber==="A"){stats.ab++;p.lastChamber="B"}else if(vx<0&&p.lastChamber==="B"){stats.ba++;p.lastChamber="A"}}else stats.illegalPartition++}
+}
+function beamSegment(p,x0,y0,x1,y1,vx,vy,dir){
+  if(!measurementActive||p.outcome!==null)return;
+  const q=crossingFraction(x0,x1,C.PARTITION);
+  if(q!==null){const y=y0+(y1-y0)*q;if(y>geometry.yGU&&y<geometry.yGL&&Math.sign(vx)===dir){p.outcome="success";p.sectionOut={x:C.PARTITION,y,vx,vy};stats.classified++;stats.success++}else if(y<=geometry.yGU||y>=geometry.yGL)stats.illegalPartition++}
+  const source=dir>0?C.SOURCE_X:1-C.SOURCE_X,qs=crossingFraction(x0,x1,source);
+  if(p.outcome===null&&qs!==null&&Math.sign(vx)===-dir){p.outcome="fail";stats.classified++;stats.fail++}
+}
+function relaxRuntimeSegment(p,x0,y0,x1,y1,vx,vy){relaxationSegment(p,x0,y0,x1,y1,vx,vy);collectTrailSegment(p,x0,y0,x1,y1)}
+function forwardRuntimeSegment(p,x0,y0,x1,y1,vx,vy){relaxationSegment(p,x0,y0,x1,y1,vx,vy);beamSegment(p,x0,y0,x1,y1,vx,vy,1);collectTrailSegment(p,x0,y0,x1,y1)}
+function mirrorRuntimeSegment(p,x0,y0,x1,y1,vx,vy){relaxationSegment(p,x0,y0,x1,y1,vx,vy);beamSegment(p,x0,y0,x1,y1,vx,vy,-1);collectTrailSegment(p,x0,y0,x1,y1)}
+function trailRuntimeSegment(p,x0,y0,x1,y1,vx,vy){collectTrailSegment(p,x0,y0,x1,y1)}
+
+function snapshot(ps){const a=new Float64Array(ps.length*4);for(let i=0;i<ps.length;i++){const p=ps[i],j=i*4;a[j]=p.x;a[j+1]=p.y;a[j+2]=p.vx;a[j+3]=p.vy}return a}
+function generateForwardRun(dir){
+  const key=`${dir}|${particleN}|${opening}|${SEED}|${C.DEMO_STOP_SECONDS}`;
+  if(forwardRunCache.has(key))return forwardRunCache.get(key);
+  const ps=beamSamples(particleN,dir).map(s=>makeParticle(s.id,dir>0?C.SOURCE_X:1-C.SOURCE_X,s.y,s.vx,s.vy,"reference"));
+  const frames=[snapshot(ps)],steps=Math.round(C.DEMO_STOP_SECONDS/C.DT);
+  for(let k=0;k<steps;k++){for(const p of ps)moveParticle(p,C.DT);frames.push(snapshot(ps))}
+  const run={key,dir,frames,n:particleN,steps,duration:steps*C.DT};forwardRunCache.set(key,run);return run;
+}
+function beginDemoRecording(dir){
+  currentDemoFrames=[snapshot(particles)];savedDemoRuns[dir>0?"A":"B"]=null;demoStopReached=false;
+}
+function recordDemoSnapshot(force=false){
+  if(activeGroup!=="demo"||(mode!=="forward"&&mode!=="mirror")||!currentDemoFrames)return;
+  if(!force&&physicsStep%6!==0)return;
+  currentDemoFrames.push(snapshot(particles));
+}
+function finishPreparedDemo(){
+  if(activeGroup!=="demo"||(mode!=="forward"&&mode!=="mirror")||demoStopReached)return;
+  recordDemoSnapshot(true);
+  const dir=mode==="forward"?1:-1,key=dir>0?"A":"B";
+  savedDemoRuns[key]={dir,frames:currentDemoFrames.slice(),n:particleN,duration:simTime,steps:physicsStep,live:true,fixedStop:true};
+  currentDemoFrames=null;demoStopReached=true;running=false;$("playBtn").textContent="Replay";$("modeCaption").textContent=dir>0?"Stopped at 2.5 s. Step 3 reverses this exact state.":"Stopped at 2.5 s. Step 4 reverses this exact state.";
+}
+function reverseRunFor(dir){return savedDemoRuns[dir>0?"A":"B"]||generateForwardRun(dir)}
+function initReverse(dir){
+  const run=reverseRunFor(dir),z=run.frames[run.frames.length-1];referenceRun=run;reverseStopReached=false;particles=[];
+  for(let i=0;i<run.n;i++){const j=i*4,p=makeParticle(i,z[j],z[j+1],-z[j+2],-z[j+3],dir>0?"reverseA":"reverseB");particles.push(p)}
+  stats={particles:run.n,forwardTime:run.duration,collisions:0,illegalPartition:0};measurementActive=false;
+}
+
+function reset(){
+  simTime=0;physicsStep=0;accumulator=0;recentWide=[];recentGap=[];history=[];measurementActive=true;referenceRun=null;demoStopReached=false;reverseStopReached=false;
+  if(mode==="relax")initRelax();
+  else if(mode==="forward")initBeam(1,"forward");
+  else if(mode==="mirror")initBeam(-1,"mirror");
+  else if(mode==="reverseA")initReverse(1);
+  else if(mode==="reverseB")initReverse(-1);
+  if(activeGroup==="demo"&&(mode==="forward"||mode==="mirror"))beginDemoRecording(mode==="forward"?1:-1);
+  resetTrajectoryRenderer();
+  running=!reduceMotion;renderDirty=true;$("playBtn").textContent=running?"Pause":"Play";
+  updateStaticUI();resizeVisibleCanvases();render(true);
+  requestAnimationFrame(()=>{resizeVisibleCanvases();render(true)});
+}
+function recordHistory(){
+  if(activeGroup!=="simulation")return;const n=stats.ab+stats.ba;if(!n)return;const d=(stats.ab-stats.ba)/n;history.push({t:simTime,d});if(history.length>600)history.splice(0,history.length-600)
+}
+function stepPhysics(){
+  if(activeGroup==="demo"&&(((mode==="forward"||mode==="mirror")&&demoStopReached)||((mode==="reverseA"||mode==="reverseB")&&reverseStopReached)))return;
+  simTime+=C.DT;physicsStep++;
+  if(mode==="relax"){
+    let a=0,b=0;for(const p of particles){stats.collisions+=moveParticle(p,C.DT,relaxRuntimeSegment);if(p.x<C.PARTITION)a++;else b++;if(!insideBox(p.x,p.y,2e-8))throw new Error(`Particle outside box: ${p.id}`)}
+    stats.aNow=a;stats.bNow=b;if(showTrajectories&&activeGroup==="simulation"&&physicsStep%C.TRAIL_SLICE_STEPS===0)flushTrailSegments();if(physicsStep%60===0)recordHistory();return;
+  }
+  if(mode==="reverseA"||mode==="reverseB"){
+    if(reverseStopReached)return;
+    for(const p of particles){stats.collisions+=moveParticle(p,C.DT,showTrajectories?trailRuntimeSegment:null);if(!insideBox(p.x,p.y,2e-8))throw new Error(`Reversed particle outside box: ${p.id}`)}
+    if(referenceRun && physicsStep>=referenceRun.steps){
+      reverseStopReached=true;running=false;
+      $("playBtn").textContent="Replay";
+      $("modeCaption").textContent=mode==="reverseA"?"Returned to the A-beam starting state.":"Returned to the B-beam starting state.";
+    }
+    return;
+  }
+  const dir=mode==="forward"?1:-1,segmentFn=dir>0?forwardRuntimeSegment:mirrorRuntimeSegment;let a=0,b=0;
+  for(const p of particles){
+    p.age+=C.DT;
+    stats.collisions+=moveParticle(p,C.DT,segmentFn);
+    if(p.x<C.PARTITION)a++;else b++;
+    if(measurementActive&&p.outcome===null&&p.age>=7){p.outcome="fail";stats.classified++;stats.fail++}
+    if(!insideBox(p.x,p.y,2e-8))throw new Error(`Beam particle outside box: ${p.id}`);
+  }
+  stats.aNow=a;stats.bNow=b;if(showTrajectories&&activeGroup==="simulation"&&physicsStep%C.TRAIL_SLICE_STEPS===0)flushTrailSegments();
+  if(activeGroup==="simulation"&&physicsStep%60===0)recordHistory();
+  if(activeGroup==="demo"){
+    recordDemoSnapshot();
+    if(simTime>=C.DEMO_STOP_SECONDS-C.DT/2)finishPreparedDemo();
+  }
+}
+
+function buildReferenceTrailLayer(run,mode,w,h,d){
+  const cache=referenceTrailLayer;
+  if(cache.run===run&&cache.mode===mode&&cache.w===w&&cache.h===h&&cache.d===d)return cache.canvas;
+  const c=cache.canvas,cc=c.getContext("2d");c.width=Math.max(1,Math.round(w*d));c.height=Math.max(1,Math.round(h*d));cc.setTransform(d,0,0,d,0,0);cc.clearRect(0,0,w,h);
+  cc.strokeStyle=mode==="reverseA"?"rgba(61,142,138,.065)":"rgba(177,118,49,.065)";cc.lineWidth=.65;cc.beginPath();
+  const last=run.frames.length-1,stride=Math.max(1,Math.ceil(run.frames.length/120));
+  for(let i=0;i<run.n;i++){
+    let first=true;
+    for(let k=0;k<=last;k+=stride){const z=run.frames[k],j=i*4,x=z[j]*w,y=z[j+1]*h;if(first){cc.moveTo(x,y);first=false}else cc.lineTo(x,y)}
+    if(last%stride!==0){const z=run.frames[last],j=i*4;cc.lineTo(z[j]*w,z[j+1]*h)}
+  }
+  cc.stroke();cache.run=run;cache.mode=mode;cache.w=w;cache.h=h;cache.d=d;return c;
+}
+function drawSimulation(){
+  const dim=dims(simCanvas),w=dim.w,h=dim.h;if(!w||!h)return;if(showTrajectories&&liveTrail.segmentCount)flushTrailSegments();ctx.fillStyle=COL.field;ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle=COL.wall;ctx.lineWidth=1.35;ctx.beginPath();for(const s of geometry.segments){ctx.moveTo(s.a[0]*w,s.a[1]*h);ctx.lineTo(s.b[0]*w,s.b[1]*h)}ctx.stroke();
+  ctx.font=`500 ${Math.max(20,Math.min(30,w*.026))}px Georgia,serif`;ctx.fillStyle="#82949b";ctx.fillText("A",w*.045,h*.10);ctx.fillText("B",w*.925,h*.10);
+  if(showTrajectories){
+    if(mode==="reverseA"||mode==="reverseB"){const run=referenceRun||generateForwardRun(mode==="reverseA"?1:-1),layer=buildReferenceTrailLayer(run,mode,w,h,dim.d);ctx.drawImage(layer,0,0,w,h)}
+    drawLiveTrailLayers(w,h,dim.d);
+  }
+  ctx.fillStyle=mode==="relax"?COL.neutral:((mode==="mirror"||mode==="reverseB")?COL.b:COL.a);ctx.beginPath();const pr=mode==="relax"?1.65:1.9;for(const p of particles){ctx.moveTo(p.x*w+pr,p.y*h);ctx.arc(p.x*w,p.y*h,pr,0,Math.PI*2)}ctx.fill();
+}
+function drawChart(){
+  const {w,h}=dims(imbalanceCanvas);if(!w||!h)return;ictx.fillStyle="#faf9f6";ictx.fillRect(0,0,w,h);const pad={l:44,r:10,t:13,b:28},mid=pad.t+(h-pad.t-pad.b)/2;
+  ictx.strokeStyle="#d8d6cf";ictx.lineWidth=1;ictx.beginPath();ictx.moveTo(pad.l,mid);ictx.lineTo(w-pad.r,mid);ictx.stroke();ictx.fillStyle="#6e7c82";ictx.font="11px Inter,system-ui";ictx.fillText("A→B",8,pad.t+4);ictx.fillText("0",22,mid+4);ictx.fillText("B→A",8,h-pad.b+4);ictx.fillText("time",w-pad.r-22,h-8);
+  if(history.length===1){const d=history[0],x=pad.l,y=pad.t+(1-(d.d+1)/2)*(h-pad.t-pad.b);ictx.fillStyle="#367f7c";ictx.beginPath();ictx.arc(x,y,2,0,Math.PI*2);ictx.fill();return}
+  if(history.length<2)return;const t0=history[0].t,t1=history[history.length-1].t;ictx.strokeStyle="#367f7c";ictx.lineWidth=1.5;ictx.beginPath();history.forEach((d,i)=>{const x=pad.l+(d.t-t0)/Math.max(1e-9,t1-t0)*(w-pad.l-pad.r),y=pad.t+(1-(d.d+1)/2)*(h-pad.t-pad.b);if(i===0)ictx.moveTo(x,y);else ictx.lineTo(x,y)});ictx.stroke();
+}
+function phaseFrame(context,canvas){
+  const {w,h}=dims(canvas);if(!w||!h)return null;const pad={l:47,r:12,t:18,b:39},yMin=.34,yMax=.66;context.fillStyle="#faf9f6";context.fillRect(0,0,w,h);const midX=pad.l+(w-pad.l-pad.r)/2,midY=pad.t+(h-pad.t-pad.b)/2;context.strokeStyle="#dedbd4";context.lineWidth=1;context.beginPath();context.moveTo(midX,pad.t);context.lineTo(midX,h-pad.b);context.moveTo(pad.l,midY);context.lineTo(w-pad.r,midY);context.stroke();context.strokeStyle="#8f999d";context.beginPath();context.moveTo(pad.l,pad.t);context.lineTo(pad.l,h-pad.b);context.lineTo(w-pad.r,h-pad.b);context.stroke();context.fillStyle="#68767c";context.font="11px Inter,system-ui";context.fillText("higher",6,pad.t+4);context.fillText("centre",8,midY+4);context.fillText("lower",11,h-pad.b+4);context.fillText("down",pad.l-3,h-18);context.fillText("level",midX-12,h-18);context.fillText("up",w-pad.r-10,h-18);return{w,h,pad,yMin,yMax}
+}
+function drawPoints(context,d,data,color,alpha=.55,r=1.6){context.fillStyle=color;context.globalAlpha=alpha;context.beginPath();for(const q of data){const x=d.pad.l+(q.s+1)/2*(d.w-d.pad.l-d.pad.r),y=d.pad.t+(q.y-d.yMin)/(d.yMax-d.yMin)*(d.h-d.pad.t-d.pad.b);if(y<d.pad.t||y>d.h-d.pad.b)continue;context.moveTo(x+r,y);context.arc(x,y,r,0,Math.PI*2)}context.fill();context.globalAlpha=1}
+function sourcePoints(dir){return beamSamples(particleN,dir).map(s=>phasePoint(s.y,s.vx,s.vy))}
+function transmittedPoints(){const out=[];for(const p of particles)if(p.sectionOut)out.push(phasePoint(p.sectionOut.y,p.sectionOut.vx,p.sectionOut.vy));return out}
+function keyHtml(items){return items.map(([c,t])=>`<span><i style="background:${c}"></i>${t}</span>`).join("")}
+function drawCrossings(){
+  const d=phaseFrame(pctx,phasePlot);if(!d)return;
+  if(mode==="relax"){drawPoints(pctx,d,recentGap.filter(x=>x.dir>0),COL.a,.48,1.45);drawPoints(pctx,d,recentGap.filter(x=>x.dir<0),COL.b,.46,1.45)}
+  else if(mode==="forward"){drawPoints(pctx,d,sourcePoints(1),COL.a,.52,1.6);drawPoints(pctx,d,transmittedPoints(),COL.b,.68,1.65)}
+  else if(mode==="mirror"){drawPoints(pctx,d,sourcePoints(-1),COL.b,.50,1.6);drawPoints(pctx,d,transmittedPoints(),COL.a,.68,1.65)}
+  else{const dir=mode==="reverseA"?1:-1,run=referenceRun||reverseRunFor(dir),last=run.frames[run.frames.length-1],out=[],rev=[];for(let i=0;i<run.n;i++){let j=i*4;out.push(phasePoint(last[j+1],last[j+2],last[j+3]));rev.push(phasePoint(last[j+1],-last[j+2],-last[j+3]))}drawPoints(pctx,d,out,dir>0?COL.a:COL.b,.36,1.45);drawPoints(pctx,d,rev,dir>0?COL.b:COL.a,.55,1.45)}
+}
+function metricRows(){
+  if(activeGroup==="simulation"){
+    const den=stats.aNow+stats.bNow,n=stats.ab+stats.ba,d=n?(stats.ab-stats.ba)/n:0;
+    const rows=[["Particles in A",pct(stats.aNow/Math.max(1,den))],["Particles in B",pct(stats.bNow/Math.max(1,den))],["A → B passages",String(stats.ab)],["B → A passages",String(stats.ba)],["Passage imbalance",n?pct(d):"collecting…"],["Simulation time",simTime.toFixed(1)]];
+    if(startState!=="random")rows.splice(5,0,["First-pass transmission",stats.classified?pct(stats.success/stats.classified):"collecting…"]);
+    return rows;
+  }
+  if(mode==="forward"||mode==="mirror"){return[["Particles",String(particles.length)],["First-pass transmissions",String(stats.success)],["Classified",`${stats.classified} / ${particles.length}`],["Transmission",stats.classified?pct(stats.success/stats.classified):"collecting…"],["Demonstration time",`${simTime.toFixed(1)} / ${C.DEMO_STOP_SECONDS.toFixed(1)} s`]]}
+  const dir=mode==="reverseA"?1:-1,run=referenceRun||reverseRunFor(dir);return[["Particles reversed",String(run.n)],["Forward endpoint",`${run.duration.toFixed(1)} s`],["Time since reversal",simTime.toFixed(1)+" s"],["Direction",dir>0?"A → B reversed":"B → A reversed"]];
+}
+function updateMetrics(){
+  const html=metricRows().map(([k,v])=>`<div class="metric-row"><dt>${k}</dt><dd>${v}</dd></div>`).join("");if($("metricList").dataset.html!==html){$("metricList").innerHTML=html;$("metricList").dataset.html=html}
+  if(activeGroup==="simulation"){const n=stats.ab+stats.ba,d=n?(stats.ab-stats.ba)/n:0;$("imbalanceValue").textContent=n?pct(d):"collecting…"}
+}
+
+function updateCrossingText(){
+  if(mode==="relax"){$("crossingIntro").textContent="At equilibrium, crossings balance in the two directions.";$("crossingTitle").textContent="Crossings through the opening";$("crossingKey").innerHTML=keyHtml([[COL.a,"A→B"],[COL.b,"B→A"]]);$("crossingSummary").textContent="Neither direction is privileged."}
+  else if(mode==="forward"){$("crossingIntro").textContent="The funnel narrows the crossing positions while spreading the outgoing directions.";$("crossingTitle").textContent="A beam before and after the funnel";$("crossingKey").innerHTML=keyHtml([[COL.a,"initial"],[COL.b,"transmitted"]]);$("crossingSummary").innerHTML="<strong>Tall and narrow becomes short and wide:</strong> less spread in position, more spread in direction."}
+  else if(mode==="mirror"){$("crossingIntro").textContent="This is the exact mirrored preparation, not the time reverse of the A beam.";$("crossingTitle").textContent="Mirrored beam";$("crossingKey").innerHTML=keyHtml([[COL.b,"initial"],[COL.a,"transmitted"]]);$("crossingSummary").textContent="A mirrored preparation can transmit differently without producing one-way equilibrium transport."}
+  else if(mode==="reverseA"){$("crossingIntro").textContent="The complete final A → B state, before and after reversing every velocity.";$("crossingTitle").textContent="A → B final state";$("crossingKey").innerHTML=keyHtml([[COL.a,"forward"],[COL.b,"reversed"]]);$("crossingSummary").textContent="Every particle is reversed, including particles that did not pass through the funnel."}
+  else{$("crossingIntro").textContent="The complete final B → A state, before and after reversing every velocity.";$("crossingTitle").textContent="B → A final state";$("crossingKey").innerHTML=keyHtml([[COL.b,"forward"],[COL.a,"reversed"]]);$("crossingSummary").textContent="Every particle is reversed, including particles that did not pass through the funnel."}
+}
+function updateStaticUI(){
+  document.querySelectorAll(".experiment").forEach(b=>b.classList.toggle("active",b.dataset.group===activeGroup));
+  document.querySelectorAll(".demo-step").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
+  $("beamSequence").hidden=activeGroup!=="demo";
+  $("startStateControl").hidden=activeGroup!=="simulation";
+  $("startStateSelect").value=startState;
+  $("modeCaption").textContent=activeGroup==="demo"?copy[mode]:"";
+  $("shareControl").hidden=!(activeGroup==="simulation"&&startState==="random");
+  $("imbalanceBlock").hidden=activeGroup!=="simulation";
+  $("trajectoryCheck").checked=showTrajectories;
+  $("nOut").textContent=particleN;$("speedOut").textContent=playback.toFixed(1)+"×";const a=Math.round(startAShare*100),b=100-a;$("shareAOut").textContent=`A ${a}%`;$("shareBOut").textContent=`${b}% B`;$("gapOut").textContent=Math.round(opening*100)+"%";updateCrossingText();
+}
+function updateAnalysis(){if($("analysis").hidden)return;if(analysisPane==="measurements"){updateMetrics();if(activeGroup==="simulation")drawChart()}else if(analysisPane==="crossings")drawCrossings()}
+function render(force=false){drawSimulation();const now=performance.now();if(force||now-lastAnalysisDraw>140){updateAnalysis();lastAnalysisDraw=now}renderDirty=false}
+function frame(ts){
+  const wall=Math.min((ts-lastFrame)/1000,.06);lastFrame=ts;if(document.hidden){requestAnimationFrame(frame);return}
+  let stepped=false;
+  if(running){accumulator+=wall*playback;let k=0;while(accumulator>=C.DT&&k<100){stepPhysics();accumulator-=C.DT;k++;stepped=true}if(k===100)accumulator=0}
+  if(running||stepped||renderDirty){drawSimulation();if(ts-lastAnalysisDraw>140){updateAnalysis();lastAnalysisDraw=ts}renderDirty=false}
+  requestAnimationFrame(frame)
+}
+function numericalSelfCheck(){
+  const rng=mulberry32(0x41C6CE57),test=[];for(let i=0;i<36;i++){const ch=i%2?"A":"B",[x,y]=randomInChamber(rng,ch),a=rng()*2*Math.PI;test.push(makeParticle(i,x,y,C.SPEED*Math.cos(a),C.SPEED*Math.sin(a),"test"))}
+  let drift=0,outside=0;for(let k=0;k<30000;k++)for(const p of test){moveParticle(p,C.DT);drift=Math.max(drift,Math.abs(Math.hypot(p.vx,p.vy)-C.SPEED));if(!insideBox(p.x,p.y,2e-8))outside++}return{passed:outside===0&&drift<1e-11,outside,speedDrift:drift,steps:30000,particles:test.length}
+}
+
+$("playBtn").addEventListener("click",()=>{
+  if(activeGroup==="demo"&&(((mode==="forward"||mode==="mirror")&&demoStopReached)||((mode==="reverseA"||mode==="reverseB")&&reverseStopReached))){reset();return}
+  running=!running;renderDirty=true;$("playBtn").textContent=running?"Pause":"Play";
+});
+$("stepBtn").addEventListener("click",()=>{if(running){running=false;$("playBtn").textContent="Play"}if(!reverseStopReached&&!demoStopReached)stepPhysics();render(true)});
+$("resetBtn").addEventListener("click",reset);
+function reverseAllVelocities(){
+  for(const p of particles){p.vx*=-1;p.vy*=-1}
+  if(mode==="forward"||mode==="mirror")measurementActive=false;
+  running=true;renderDirty=true;$("playBtn").textContent="Pause";
+}
+$("reverseVelocityBtn").addEventListener("click",reverseAllVelocities);
+$("trajectoryCheck").addEventListener("change",e=>{
+  showTrajectories=e.target.checked;resetTrajectoryRenderer();drawSimulation();renderDirty=false;
+});
+$("nSlider").addEventListener("change",e=>{particleN=+e.target.value;baseBeamCache.key=null;forwardRunCache.clear();referenceRun=null;savedDemoRuns={A:null,B:null};currentDemoFrames=null;reset()});
+$("nSlider").addEventListener("input",e=>{$("nOut").textContent=e.target.value});
+$("speedSlider").addEventListener("input",e=>{playback=+e.target.value;$("speedOut").textContent=playback.toFixed(1)+"×"});
+$("startStateSelect").addEventListener("change",e=>{startState=e.target.value;activeGroup="simulation";mode=startState==="random"?"relax":(startState==="beamA"?"forward":"mirror");reset()});
+$("shareSlider").addEventListener("change",e=>{startAShare=+e.target.value/100;reset()});
+$("shareSlider").addEventListener("input",e=>{const a=+e.target.value;$("shareAOut").textContent=`A ${a}%`;$("shareBOut").textContent=`${100-a}% B`});
+$("gapSlider").addEventListener("change",e=>{opening=+e.target.value/100;buildGeometry();reset()});
+$("gapSlider").addEventListener("input",e=>{$("gapOut").textContent=e.target.value+"%"});
+function selectGroup(group){
+  activeGroup=group;
+  showTrajectories=group==="demo";
+  if(activeGroup==="simulation")mode=startState==="random"?"relax":(startState==="beamA"?"forward":"mirror");else mode="forward";
+  reset();
+}
+function selectDemoMode(nextMode){activeGroup="demo";mode=nextMode;reset()}
+document.querySelectorAll(".experiment").forEach(b=>b.addEventListener("click",()=>selectGroup(b.dataset.group)));
+document.querySelectorAll(".demo-step").forEach(b=>b.addEventListener("click",()=>selectDemoMode(b.dataset.mode)));
+document.querySelectorAll(".analysis-tab").forEach(b=>b.addEventListener("click",()=>{analysisPane=b.dataset.pane;document.querySelectorAll(".analysis-tab").forEach(x=>{x.classList.toggle("active",x===b);x.setAttribute("aria-selected",x===b?"true":"false")});document.querySelectorAll(".analysis-pane").forEach(x=>x.hidden=x.id!==analysisPane+"Pane");requestAnimationFrame(()=>{resizeVisibleCanvases();render(true)})}));
+$("hideAnalysisBtn").addEventListener("click",()=>{$("analysis").hidden=true;$("instrument").classList.add("analysis-hidden");requestAnimationFrame(()=>{resizeVisibleCanvases();render(true)})});
+$("showAnalysisBtn").addEventListener("click",()=>{$("analysis").hidden=false;$("instrument").classList.remove("analysis-hidden");requestAnimationFrame(()=>{resizeVisibleCanvases();render(true)})});
+document.addEventListener("visibilitychange",()=>{lastFrame=performance.now()});
+
+buildGeometry();resizeVisibleCanvases();reset();
+window.FunnelViz={
+  getState:()=>({mode,activeGroup,startState,particleN,startAShare,opening,simTime,physicsStep,historyLength:history.length,measurementActive,showTrajectories,canvas:{imbalance:{width:imbalanceCanvas.width,height:imbalanceCanvas.height,clientWidth:imbalanceCanvas.clientWidth,clientHeight:imbalanceCanvas.clientHeight}},stats:JSON.parse(JSON.stringify(stats)),trajectorySamples:liveTrail.sampleCount,particles:particles.map(p=>({x:p.x,y:p.y,vx:p.vx,vy:p.vy,outcome:p.outcome}))}),
+  setMode:m=>{mode=m;activeGroup=(m==="relax"||m==="forward"||m==="mirror")?"simulation":"demo";reset()},
+  selectDemoMode,selectGroup,
+  setStartState:s=>{startState=s;activeGroup="simulation";mode=s==="random"?"relax":(s==="beamA"?"forward":"mirror");reset()},
+  setN:n=>{particleN=n;baseBeamCache.key=null;forwardRunCache.clear();referenceRun=null;reset()},setShare:s=>{startAShare=s;reset()},setOpening:o=>{opening=o;buildGeometry();reset()},runSteps:n=>{for(let i=0;i<n;i++)stepPhysics();render(true);return window.FunnelViz.getState()},reset,selfCheck:numericalSelfCheck,forwardRun:generateForwardRun,reverseRunFor,reverseAllVelocities,renderNow:()=>render(true),version:"10.1"
+};
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
