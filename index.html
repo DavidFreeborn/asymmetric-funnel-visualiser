@@ -33,15 +33,12 @@ h1{margin:0;font-size:clamp(29px,2.2vw,40px);line-height:1.08;font-weight:500;le
 .toolbtn{border:1px solid var(--rule-dark);padding:6px 11px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}
 .toolbtn:hover{background:#ebe8e1}
 .toolbtn.primary{border-color:var(--focus);color:#174e4b}
-.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;align-items:end}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;align-items:end}
 .control[hidden]{display:none}
 .control label,.control-title{display:flex;justify-content:space-between;gap:10px;margin-bottom:3px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#596970;font-size:13px}
 .control output{color:var(--ink);font-variant-numeric:tabular-nums}
 input[type="range"]{display:block;width:100%;margin:0;accent-color:#5d9e9b}
 select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#faf9f6;color:var(--ink);padding:5px 7px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:13px}
-.split-row{display:grid;grid-template-columns:auto minmax(90px,1fr) auto;gap:8px;align-items:center}
-.split-row output{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px;line-height:1;color:#53636a;min-width:42px}
-.split-row output:last-child{text-align:right}
 .check-control{display:flex;align-items:end;min-height:39px}
 .checkline{display:inline-flex!important;justify-content:flex-start!important;align-items:center;gap:7px!important;margin:0!important;color:#53636a!important;cursor:pointer}
 .checkline input{margin:0}
@@ -66,8 +63,6 @@ select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#
 #simCanvas{display:block;width:100%;height:100%}
 .panel-toggle{position:absolute;z-index:5;top:8px;right:8px;width:30px;height:30px;border:1px solid #7e8e95;color:#dce5e8;background:#0d171c;font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:17px;line-height:28px;padding:0}
 .panel-toggle:hover{background:#142127}
-.panel-toggle.open{display:none}
-.instrument.analysis-hidden .panel-toggle.open{display:block}
 
 .analysis{min-width:0;border-left:1px solid var(--rule);background:var(--paper);display:grid;grid-template-rows:auto minmax(0,1fr)}
 .analysis[hidden]{display:none}
@@ -113,7 +108,6 @@ select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#
   .control-band{grid-template-columns:1fr}
   .instrument,.instrument.analysis-hidden{grid-template-columns:1fr;width:100%}
   .analysis{border-left:0;border-top:1px solid var(--rule)}
-  .instrument.analysis-hidden .panel-toggle.open{display:block}
   .crossing-grid{grid-template-columns:1fr 1fr}
 }
 @media(max-width:760px){
@@ -166,13 +160,9 @@ select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#
         <option value="beamB">Collimated beam from B</option>
       </select>
     </div>
-    <div class="control split-control" id="shareControl">
-      <span class="control-title">Starting particles</span>
-      <div class="split-row">
-        <output id="shareAOut">A 50%</output>
-        <input id="shareSlider" aria-label="Share of particles starting in chamber A" type="range" min="0" max="100" step="10" value="50">
-        <output id="shareBOut">50% B</output>
-      </div>
+    <div class="control" id="shareControl">
+      <label for="shareSlider"><span>Starting particles</span><output id="shareOut">A 50% / B 50%</output></label>
+      <input id="shareSlider" aria-label="Share of particles starting in chamber A" type="range" min="0" max="100" step="10" value="50">
     </div>
     <div class="control">
       <label for="gapSlider"><span>Opening width</span><output id="gapOut">8%</output></label>
@@ -198,7 +188,7 @@ select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#
   <section class="sim-wrap" aria-label="Particle simulation">
     <div class="sim-stage" id="simStage">
       <canvas id="simCanvas" role="img" aria-label="Particle simulation"></canvas>
-      <button class="panel-toggle open" id="showAnalysisBtn" aria-label="Show analysis" title="Show analysis">←</button>
+      <button class="panel-toggle" id="analysisToggle" aria-controls="analysis" aria-expanded="true" aria-label="Hide analysis" title="Hide analysis">→</button>
     </div>
   </section>
 
@@ -209,7 +199,6 @@ select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#
         <button class="analysis-tab" data-pane="crossings" role="tab" aria-selected="false" aria-controls="crossingsPane">Position &amp; direction</button>
         <button class="analysis-tab" data-pane="theory" role="tab" aria-selected="false" aria-controls="theoryPane">Theory</button>
       </div>
-      <button class="panel-toggle collapse" id="hideAnalysisBtn" aria-label="Hide analysis" title="Hide analysis">→</button>
     </div>
     <div class="analysis-body">
       <section class="analysis-pane" id="measurementsPane">
@@ -583,7 +572,7 @@ function updateStaticUI(){
   $("shareControl").hidden=!(activeGroup==="simulation"&&startState==="random");
   $("imbalanceBlock").hidden=activeGroup!=="simulation";
   $("trajectoryCheck").checked=showTrajectories;
-  $("nOut").textContent=particleN;$("speedOut").textContent=playback.toFixed(1)+"×";const a=Math.round(startAShare*100),b=100-a;$("shareAOut").textContent=`A ${a}%`;$("shareBOut").textContent=`${b}% B`;$("gapOut").textContent=Math.round(opening*100)+"%";updateCrossingText();
+  $("nOut").textContent=particleN;$("speedOut").textContent=playback.toFixed(1)+"×";const a=Math.round(startAShare*100),b=100-a;$("shareOut").textContent=`A ${a}% / B ${b}%`;$("gapOut").textContent=Math.round(opening*100)+"%";updateCrossingText();
 }
 function updateAnalysis(){if($("analysis").hidden)return;if(analysisPane==="measurements"){updateMetrics();if(activeGroup==="simulation")drawChart()}else if(analysisPane==="crossings")drawCrossings()}
 function render(force=false){drawSimulation();const now=performance.now();if(force||now-lastAnalysisDraw>140){updateAnalysis();lastAnalysisDraw=now}renderDirty=false}
@@ -619,7 +608,7 @@ $("nSlider").addEventListener("input",e=>{$("nOut").textContent=e.target.value})
 $("speedSlider").addEventListener("input",e=>{playback=+e.target.value;$("speedOut").textContent=playback.toFixed(1)+"×"});
 $("startStateSelect").addEventListener("change",e=>{startState=e.target.value;activeGroup="simulation";mode=startState==="random"?"relax":(startState==="beamA"?"forward":"mirror");reset()});
 $("shareSlider").addEventListener("change",e=>{startAShare=+e.target.value/100;reset()});
-$("shareSlider").addEventListener("input",e=>{const a=+e.target.value;$("shareAOut").textContent=`A ${a}%`;$("shareBOut").textContent=`${100-a}% B`});
+$("shareSlider").addEventListener("input",e=>{const a=+e.target.value;$("shareOut").textContent=`A ${a}% / B ${100-a}%`});
 $("gapSlider").addEventListener("change",e=>{opening=+e.target.value/100;buildGeometry();reset()});
 $("gapSlider").addEventListener("input",e=>{$("gapOut").textContent=e.target.value+"%"});
 function selectGroup(group){
@@ -632,8 +621,7 @@ function selectDemoMode(nextMode){activeGroup="demo";mode=nextMode;reset()}
 document.querySelectorAll(".experiment").forEach(b=>b.addEventListener("click",()=>selectGroup(b.dataset.group)));
 document.querySelectorAll(".demo-step").forEach(b=>b.addEventListener("click",()=>selectDemoMode(b.dataset.mode)));
 document.querySelectorAll(".analysis-tab").forEach(b=>b.addEventListener("click",()=>{analysisPane=b.dataset.pane;document.querySelectorAll(".analysis-tab").forEach(x=>{x.classList.toggle("active",x===b);x.setAttribute("aria-selected",x===b?"true":"false")});document.querySelectorAll(".analysis-pane").forEach(x=>x.hidden=x.id!==analysisPane+"Pane");requestAnimationFrame(()=>{resizeVisibleCanvases();render(true)})}));
-$("hideAnalysisBtn").addEventListener("click",()=>{$("analysis").hidden=true;$("instrument").classList.add("analysis-hidden");requestAnimationFrame(()=>{resizeVisibleCanvases();render(true)})});
-$("showAnalysisBtn").addEventListener("click",()=>{$("analysis").hidden=false;$("instrument").classList.remove("analysis-hidden");requestAnimationFrame(()=>{resizeVisibleCanvases();render(true)})});
+$("analysisToggle").addEventListener("click",e=>{const btn=e.currentTarget,hide=!$("analysis").hidden;$("analysis").hidden=hide;$("instrument").classList.toggle("analysis-hidden",hide);btn.textContent=hide?"←":"→";btn.setAttribute("aria-expanded",String(!hide));const label=hide?"Show analysis":"Hide analysis";btn.setAttribute("aria-label",label);btn.title=label;requestAnimationFrame(()=>{resizeVisibleCanvases();render(true)})});
 document.addEventListener("visibilitychange",()=>{lastFrame=performance.now()});
 
 buildGeometry();resizeVisibleCanvases();reset();
