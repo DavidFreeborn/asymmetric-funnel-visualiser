@@ -33,15 +33,14 @@ h1{margin:0;font-size:clamp(29px,2.2vw,40px);line-height:1.08;font-weight:500;le
 .toolbtn{border:1px solid var(--rule-dark);padding:6px 11px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}
 .toolbtn:hover{background:#ebe8e1}
 .toolbtn.primary{border-color:var(--focus);color:#174e4b}
-.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:16px;align-items:end}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;align-items:end}
 .control[hidden]{display:none}
 .control label,.control-title{display:flex;justify-content:space-between;gap:10px;margin-bottom:3px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#596970;font-size:13px}
 .control output{color:var(--ink);font-variant-numeric:tabular-nums}
-input[type="range"]{width:100%;margin:0;accent-color:#5d9e9b}
+input[type="range"]{display:block;width:100%;margin:0;accent-color:#5d9e9b}
 select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#faf9f6;color:var(--ink);padding:5px 7px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:13px}
-.split-control{min-width:230px}
 .split-row{display:grid;grid-template-columns:auto minmax(90px,1fr) auto;gap:8px;align-items:center}
-.split-row output{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px;color:#53636a;min-width:42px}
+.split-row output{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:12px;line-height:1;color:#53636a;min-width:42px}
 .split-row output:last-child{text-align:right}
 .check-control{display:flex;align-items:end;min-height:39px}
 .checkline{display:inline-flex!important;justify-content:flex-start!important;align-items:center;gap:7px!important;margin:0!important;color:#53636a!important;cursor:pointer}
@@ -112,7 +111,6 @@ select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#
 
 @media(max-width:1080px){
   .control-band{grid-template-columns:1fr}
-  .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
   .instrument,.instrument.analysis-hidden{grid-template-columns:1fr;width:100%}
   .analysis{border-left:0;border-top:1px solid var(--rule)}
   .instrument.analysis-hidden .panel-toggle.open{display:block}
@@ -133,7 +131,6 @@ select{width:100%;border:1px solid var(--rule-dark);border-radius:0;background:#
 @media(max-width:430px){
   .control-band{gap:10px}
   .controls{grid-template-columns:1fr}
-  .split-control{min-width:0}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
